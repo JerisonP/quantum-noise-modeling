@@ -1,0 +1,181 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 14.2' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[      6428,        173]
+NotebookOptionsPosition[      5546,        152]
+NotebookOutlinePosition[      5978,        169]
+CellTagsIndexPosition[      5935,        166]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{
+   RowBox[{
+   "you", " ", "want", " ", "to", " ", "use", " ", "comtosup", " ", "which", 
+    " ", "convertes", " ", "a", " ", "commutator", " ", "of", " ", "the", " ",
+     "form"}], " ", "-", 
+   RowBox[{
+    RowBox[{"\[ImaginaryI]", " ", "[", 
+     RowBox[{"H", ",", "\[Rho]"}], "]"}], " ", "into", " ", "L", " ", 
+    RowBox[{"\[Rho]", ".", " ", "x"}], " ", "is", " ", "the", " ", 
+    "Hamiltonian", " ", "and", " ", "n", " ", "is", " ", "the", " ", 
+    "dimension", " ", "of", " ", "the", " ", "Hilbert", " ", 
+    RowBox[{"space", "."}]}]}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.9470011773076677`*^9, 
+  3.947001226548977*^9}},ExpressionUUID->"84efea74-a904-48ca-a1a8-\
+4efa83041aa1"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{
+    "converting", " ", "the", " ", "von", " ", "Neuman", " ", "equation", " ",
+      "into", " ", "a", " ", "superoperator"}], ";", " ", 
+    RowBox[{
+    "the", " ", "density", " ", "matrix", " ", "becomes", " ", "a", " ", 
+     "\"\<vector\>\""}]}], "*)"}], "\n", 
+  RowBox[{
+   RowBox[{
+    RowBox[{
+     RowBox[{"comtosup", "[", 
+      RowBox[{"x_", ",", "n_"}], "]"}], ":=", 
+     RowBox[{"\[ImaginaryI]", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"KroneckerProduct", "[", 
+         RowBox[{
+          RowBox[{"Transpose", "[", "x", "]"}], ",", 
+          RowBox[{"IdentityMatrix", "[", "n", "]"}]}], "]"}], "-", 
+        RowBox[{"KroneckerProduct", "[", 
+         RowBox[{
+          RowBox[{"IdentityMatrix", "[", "n", "]"}], ",", "x"}], "]"}]}], 
+       ")"}]}]}], ";"}], "\n", 
+   RowBox[{"(*", " ", 
+    RowBox[{
+    "converting", " ", "the", " ", "Lindblad", " ", "operators", " ", "into", 
+     " ", "Lindblad", " ", "superoperator"}], " ", "*)"}], "\n", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"diss", "[", 
+      RowBox[{"x_", ",", "n_"}], "]"}], ":=", " ", 
+     RowBox[{
+      RowBox[{"KroneckerProduct", "[", 
+       RowBox[{
+        RowBox[{"x", "\[Conjugate]"}], ",", "x"}], "]"}], "-", 
+      RowBox[{
+       FractionBox["1", "2"], 
+       RowBox[{"KroneckerProduct", "[", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"Transpose", "[", "x", "]"}], ".", 
+          RowBox[{"Conjugate", "[", "x", "]"}]}], ",", 
+         RowBox[{"IdentityMatrix", "[", "n", "]"}]}], "]"}]}], "-", 
+      RowBox[{
+       FractionBox["1", "2"], 
+       RowBox[{"KroneckerProduct", "[", 
+        RowBox[{
+         RowBox[{"IdentityMatrix", "[", "n", "]"}], ",", 
+         RowBox[{
+          RowBox[{"ConjugateTranspose", "[", "x", "]"}], ".", "x"}]}], 
+        "]"}]}]}]}], ";"}], "\n", 
+   RowBox[{"(*", " ", 
+    RowBox[{
+    "converting", " ", "any", " ", "operator", " ", "acting", " ", "on", " ", 
+     "a", " ", "density", " ", "matrix", " ", "into", " ", "a", " ", 
+     "superoperator"}], " ", "*)"}], "\n", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"optosup", "[", "x_", "]"}], ":=", 
+     RowBox[{"KroneckerProduct", "[", 
+      RowBox[{
+       RowBox[{"Conjugate", "[", "x", "]"}], ",", "x"}], "]"}]}], ";"}], 
+   "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"DensMatToVec", ":=", 
+     RowBox[{
+      RowBox[{"Flatten", "[", 
+       RowBox[{
+        RowBox[{"Transpose", "[", "#", "]"}], ",", "1"}], "]"}], "&"}]}], 
+    ";"}], "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"DensVecToMat", ":=", 
+     RowBox[{
+      RowBox[{"Transpose", "[", 
+       RowBox[{"ArrayReshape", "[", 
+        RowBox[{
+         RowBox[{"Flatten", "[", 
+          RowBox[{
+           RowBox[{"Transpose", "[", "#1", "]"}], ",", "1"}], "]"}], ",", 
+         RowBox[{"{", 
+          RowBox[{"#2", ",", "#2"}], "}"}]}], "]"}], "]"}], "&"}]}], 
+    ";"}]}]}]], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.897124099576083*^9, 3.897124135606954*^9}, {
+  3.897124166007612*^9, 3.897124200031921*^9}, {3.9475991412051697`*^9, 
+  3.9475991420608253`*^9}, {3.947603115120617*^9, 
+  3.9476031243534756`*^9}},ExpressionUUID->"2a7004db-8790-4ef1-94f1-\
+cea8b9307917"],
+
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{{3.947599147410574*^9, 3.9475991644978027`*^9}, {
+  3.947599223425192*^9, 3.9475992249215527`*^9}, {3.947599409664442*^9, 
+  3.947599411626652*^9}},
+ CellLabel->"In[37]:=",ExpressionUUID->"3a30ccee-f93c-c641-9206-c3748fd97ced"],
+
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{{3.9475991736973114`*^9, 3.9475991858053474`*^9}, {
+  3.9475992280220776`*^9, 3.9475992286938553`*^9}, {3.947599414879816*^9, 
+  3.9475994156337357`*^9}},
+ CellLabel->"In[29]:=",ExpressionUUID->"33d08faa-e2fc-994f-9fde-e8cb52af0b53"],
+
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{{3.9475992616742916`*^9, 3.947599276205492*^9}, {
+  3.947599438527588*^9, 3.947599440342924*^9}},
+ CellLabel->"In[30]:=",ExpressionUUID->"83093908-86ce-ad43-b80a-8cdbd5bf06b9"],
+
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{{3.9475993057214985`*^9, 3.947599311052393*^9}, 
+   3.9475994463049927`*^9},
+ CellLabel->"In[31]:=",ExpressionUUID->"e836fbe0-8cd7-cc4d-b711-a293a5ea58fe"]
+},
+WindowSize->{478, 525.5},
+WindowMargins->{{Automatic, -4.5}, {Automatic, 0}},
+Magnification:>1.25 Inherited,
+FrontEndVersion->"14.1 for Microsoft Windows (64-bit) (July 16, 2024)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"f00f84d9-cfe7-40b9-9f4a-0cc7ef0b0976"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[554, 20, 746, 16, 130, "Input",ExpressionUUID->"84efea74-a904-48ca-a1a8-4efa83041aa1"],
+Cell[1303, 38, 3252, 90, 838, "Input",ExpressionUUID->"2a7004db-8790-4ef1-94f1-cea8b9307917",
+ InitializationCell->True],
+Cell[4558, 130, 273, 4, 35, "Input",ExpressionUUID->"3a30ccee-f93c-c641-9206-c3748fd97ced"],
+Cell[4834, 136, 279, 4, 35, "Input",ExpressionUUID->"33d08faa-e2fc-994f-9fde-e8cb52af0b53"],
+Cell[5116, 142, 222, 3, 35, "Input",ExpressionUUID->"83093908-86ce-ad43-b80a-8cdbd5bf06b9"],
+Cell[5341, 147, 201, 3, 35, "Input",ExpressionUUID->"e836fbe0-8cd7-cc4d-b711-a293a5ea58fe"]
+}
+]
+*)
+
