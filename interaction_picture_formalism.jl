@@ -1,120 +1,151 @@
 """
-Interaction Picture (Dirac Picture) Formalism
+Interaction Picture + Superoperator Formalism Library
+WITH DRIVE AMPLITUDE NOISE (Multiplicative Noise Model)
 
-Splits Hamiltonian into H = H₀ + H₁(t):
-- H₀: Free part (detuning) - transforms away
-- H₁: Interaction part (drive) - treated perturbatively
+This module provides tools for simulating noisy quantum gates using:
+1. Interaction (rotating) picture transformation
+2. Superoperator formalism with noise averaging
+3. DRIVE AMPLITUDE NOISE: f(t) → f(t)*(1 + ζ(t))
 
-Key transformation:
-    ρ_I(t) = U₀†(t) ρ_S(t) U₀(t)  where U₀ = exp(-iH₀t)
-    
-Evolution:
-    dρ_I/dt = -i[H₁,I(t), ρ_I(t)]
-    where H₁,I(t) = U₀†(t) H₁(t) U₀(t)
+Main workflow:
+1. Compute averaged interaction picture superoperator: compute_interaction_picture_superoperator()
+2. Apply to any initial state: apply_interaction_superoperator()
+
+Author: Based on Mathematica code by Jerison L.
+Date: 2025
 """
 
 using DifferentialEquations
-using Plots
 using LinearAlgebra
-using Random
-using Distributions
-using Statistics
 using Interpolations
+using Statistics
+using Distributions
+using Random
 
 # ============================================================================
-# Hamiltonian Decomposition
+# Constants and Basic Operators
 # ============================================================================
 
-"""
-For our system in the rotating frame:
-    H_RF = (Δ + ζ(t))/2 * σz + f(t)/2 * σx
-    
-We split this as:
-    H₀ = Δ/2 * σz              (free part - detuning)
-    H₁(t) = ζ(t)/2 * σz + f(t)/2 * σx    (interaction part - noise + drive)
-    
-In the interaction picture, H₀ is transformed away and we only evolve
-under the interaction-picture Hamiltonian H₁,I(t).
-"""
+const σx = ComplexF64[0 1; 1 0]
+const σy = ComplexF64[0 -im; im 0]
+const σz = ComplexF64[1 0; 0 -1]
+const I2 = ComplexF64[1 0; 0 1]
 
 # ============================================================================
-# Interaction Picture Transformations
+# Interaction Picture Transformation Operators
 # ============================================================================
 
 """
-    build_U0(t, Δ)
+    U0(θ, tg, t)
 
-Build the free evolution operator U₀(t) = exp(-iH₀t).
+Noiseless unitary evolution operator for interaction picture transformation.
 
-For H₀ = (Δ/2)σz:
-    U₀(t) = exp(-iΔt/2 * σz) = diag(exp(-iΔt/2), exp(iΔt/2))
+For Hamiltonian H₀(t) = (1/2)(θ/tg)(1 - cos(2πt/tg))σx, the exact solution is:
+    U₀(t) = cos(φ(t))I - i sin(φ(t))σx
+where φ(t) = (θt)/(2tg) - (θ sin(2πt/tg))/(4π)
+
+# Arguments
+- `θ`: Rotation angle
+- `tg`: Gate time
+- `t`: Current time
+
+# Returns
+- 2×2 unitary matrix
 """
-function build_U0(t, Δ)
-    exp_factor_0 = exp(-im * Δ * t / 2)
-    exp_factor_1 = exp(im * Δ * t / 2)
-    return ComplexF64[exp_factor_0 0; 0 exp_factor_1]
+function U0(θ, tg, t)
+    φ = (θ * t) / (2 * tg) - (θ * sin(2π * t / tg)) / (4π)
+    return cos(φ) * I2 - im * sin(φ) * σx
 end
 
 """
-    transform_to_interaction_picture(H, t, Δ)
+    U0_dagger(θ, tg, t)
 
-Transform Hamiltonian to interaction picture: H_I(t) = U₀†(t) H U₀(t)
-
-For our system with H₁ = ζ(t)/2 * σz + f(t)/2 * σx:
-    H₁,I(t) = U₀† H₁ U₀
+Hermitian conjugate of U₀(t).
 """
-function transform_to_interaction_picture(H, t, Δ)
-    U0 = build_U0(t, Δ)
-    U0_dag = U0'
-    return U0_dag * H * U0
+function U0_dagger(θ, tg, t)
+    φ = (θ * t) / (2 * tg) - (θ * sin(2π * t / tg)) / (4π)
+    return cos(φ) * I2 + im * sin(φ) * σx
+end
+
+# ============================================================================
+# Hamiltonians (WITH DRIVE AMPLITUDE NOISE)
+# ============================================================================
+
+"""
+    H_lab(θ, tg, ζ, t)
+
+Lab frame Hamiltonian with DRIVE AMPLITUDE NOISE.
+
+H(t) = (1/2) * f(t) * (1 + ζ(t)) * σx
+
+where f(t) = (θ/tg)(1 - cos(2πt/tg)) is the drive envelope
+and ζ(t) is multiplicative noise on the drive amplitude.
+
+# Arguments
+- `θ`: Rotation angle
+- `tg`: Gate time
+- `ζ`: Multiplicative noise (ζ(t))
+- `t`: Current time
+"""
+function H_lab(θ, tg, ζ, t)
+    # Noiseless drive amplitude
+    ft = (θ / tg) * (1 - cos(2π * t / tg))
+    
+    # Apply multiplicative noise
+    ft_noisy = ft * (1 + ζ)
+    
+    return (ft_noisy / 2) * σx
 end
 
 """
-    build_interaction_hamiltonian(t, tg, θ0, Δ, ζ_t)
+    H_interaction(θ, tg, ζ, t)
 
-Build the interaction Hamiltonian H₁(t) in the Schrödinger picture.
+Interaction picture Hamiltonian with DRIVE AMPLITUDE NOISE.
 
-H₁(t) = ζ(t)/2 * σz + f(t)/2 * σx
+H_I(t) = U₀†(t) [f(t)·ζ(t)/2 σx] U₀(t)
+
+The noiseless drive is removed by U₀ transformation, leaving only
+the noise-induced correction.
+
+# Arguments
+- `θ`: Rotation angle
+- `tg`: Gate time
+- `ζ`: Multiplicative noise ζ(t)
+- `t`: Current time
 """
-function build_interaction_hamiltonian(t, tg, θ0, Δ, ζ_t)
-    # Drive amplitude
-    ft = (θ0/tg) * (1 - cos(2*π*t/tg))
+function H_interaction(θ, tg, ζ, t)
+    U0_t = U0(θ, tg, t)
+    U0d_t = U0_dagger(θ, tg, t)
     
-    # Pauli matrices
-    σz = ComplexF64[1 0; 0 -1]
-    σx = ComplexF64[0 1; 1 0]
+    # Noiseless drive amplitude
+    ft = (θ / tg) * (1 - cos(2π * t / tg))
     
-    # Interaction Hamiltonian (noise + drive)
-    H1 = (ζ_t/2) * σz + (ft/2) * σx
-    
-    return H1
-end
-
-"""
-    build_interaction_picture_hamiltonian(t, tg, θ0, Δ, ζ_t)
-
-Build H₁,I(t) = U₀†(t) H₁(t) U₀(t) directly.
-
-This is what actually drives the evolution in the interaction picture.
-"""
-function build_interaction_picture_hamiltonian(t, tg, θ0, Δ, ζ_t)
-    # Build H₁ in Schrödinger picture
-    H1 = build_interaction_hamiltonian(t, tg, θ0, Δ, ζ_t)
+    # Noise-induced term (the correction due to multiplicative noise)
+    # H_noise = f(t) * ζ(t) / 2 * σx
+    H_noise = (ft * ζ / 2) * σx
     
     # Transform to interaction picture
-    H1_I = transform_to_interaction_picture(H1, t, Δ)
-    
-    return H1_I
+    return U0d_t * H_noise * U0_t
 end
 
 # ============================================================================
-# Vectorization for Superoperator Formalism
+# Vectorization and Superoperator Tools
 # ============================================================================
 
+"""
+    vec_density_matrix(ρ::Matrix)
+
+Vectorize a 2×2 density matrix: |ρ⟩⟩ = [ρ₀₀, ρ₀₁, ρ₁₀, ρ₁₁]ᵀ
+"""
 function vec_density_matrix(ρ::Matrix{<:Number})
     return [ρ[1,1], ρ[1,2], ρ[2,1], ρ[2,2]]
 end
 
+"""
+    unvec_density_matrix(ρ_vec::Vector)
+
+Convert vectorized density matrix back to 2×2 matrix form.
+"""
 function unvec_density_matrix(ρ_vec::Vector{<:Number})
     return [ρ_vec[1] ρ_vec[2]; ρ_vec[3] ρ_vec[4]]
 end
@@ -122,18 +153,74 @@ end
 """
     commutator_superoperator(H::Matrix)
 
-Build superoperator for -i[H, ρ] acting on vectorized ρ.
+Construct superoperator L_H such that vec(-i[H,ρ]) = L_H * vec(ρ).
+
+Uses: vec([H,ρ]) = (I⊗H - Hᵀ⊗I)vec(ρ)
 """
 function commutator_superoperator(H::Matrix{<:Number})
-    I2 = Matrix{ComplexF64}(I, 2, 2)
-    L_comm = -im * (kron(I2, H) - kron(transpose(H), I2))
+    I2_local = Matrix{ComplexF64}(I, 2, 2)
+    L_comm = -im * (kron(I2_local, H) - kron(transpose(H), I2_local))
     return L_comm
+end
+
+"""
+    build_liouvillian(H::Matrix)
+
+Build Liouvillian superoperator: L|ρ⟩⟩ = -i[H,ρ]|ρ⟩⟩
+"""
+function build_liouvillian(H::Matrix{<:Number})
+    return commutator_superoperator(H)
+end
+
+# ============================================================================
+# Frame-Specific Liouvillians
+# ============================================================================
+
+"""
+    build_interaction_liouvillian(t, tg, θ, ζ_t)
+
+Build interaction picture Liouvillian at time t with noise ζ_t.
+
+NOTE: Now using DRIVE AMPLITUDE NOISE (multiplicative)
+"""
+function build_interaction_liouvillian(t, tg, θ, ζ_t)
+    H_I = H_interaction(θ, tg, ζ_t, t)
+    return build_liouvillian(H_I)
+end
+
+"""
+    build_lab_frame_liouvillian(t, tg, θ, ζ_t)
+
+Build lab frame Liouvillian at time t with noise ζ_t.
+
+NOTE: Now using DRIVE AMPLITUDE NOISE (multiplicative)
+"""
+function build_lab_frame_liouvillian(t, tg, θ, ζ_t)
+    H_lab_t = H_lab(θ, tg, ζ_t, t)
+    return build_liouvillian(H_lab_t)
 end
 
 # ============================================================================
 # Noise Generation
 # ============================================================================
 
+"""
+    generate_ou_noise(τ_c, μ, σ, tspan, dt; u0=0.0, solver=LambaEulerHeun(), 
+                      reltol=1e-6, abstol=1e-8)
+
+Generate single Ornstein-Uhlenbeck noise trajectory.
+
+OU process: dX = (1/τc)(μ - X)dt + √(2σ²/τc)dW
+
+This will be used as multiplicative noise on the drive amplitude.
+
+# Arguments
+- `τ_c`: Correlation time
+- `μ`: Mean (typically 0)
+- `σ`: Standard deviation
+- `tspan`: Time span (t_start, t_end)
+- `dt`: Sampling time step
+"""
 function generate_ou_noise(τ_c, μ, σ, tspan, dt; u0=0.0, solver=LambaEulerHeun(), 
                           reltol=1e-6, abstol=1e-8)
     f(u, p, t) = (1/τ_c) * (μ - u)
@@ -145,6 +232,15 @@ function generate_ou_noise(τ_c, μ, σ, tspan, dt; u0=0.0, solver=LambaEulerHeu
     return sol
 end
 
+"""
+    generate_ou_ensemble(τ_c, μ, σ, tspan, dt, n_samples; 
+                         solver=LambaEulerHeun(), reltol=1e-6, abstol=1e-8)
+
+Generate ensemble of OU noise trajectories with different initial conditions.
+
+# Arguments
+- `n_samples`: Number of independent noise realizations
+"""
 function generate_ou_ensemble(τ_c, μ, σ, tspan, dt, n_samples; 
                               solver=LambaEulerHeun(), reltol=1e-6, abstol=1e-8)
     f(u, p, t) = (1/τ_c) * (μ - u)
@@ -164,378 +260,400 @@ function generate_ou_ensemble(τ_c, μ, σ, tspan, dt, n_samples;
 end
 
 # ============================================================================
-# Averaged Liouvillian in Interaction Picture
+# Averaged Liouvillian Computation
 # ============================================================================
 
 """
-    compute_average_liouvillian_interaction_picture(times, tg, θ0, Δ, noise_ensemble)
+    compute_average_interaction_liouvillian(times, tg, θ, noise_ensemble)
 
-Compute the time-dependent ensemble-averaged Liouvillian in the INTERACTION PICTURE.
+Compute ensemble-averaged interaction picture Liouvillian ⟨L_I(t)⟩.
 
-This transforms out the detuning Δ, leaving only the averaged effect of the
-drive + noise interaction.
+Uses DRIVE AMPLITUDE NOISE model: H = f(t)*(1 + ζ(t))/2 * σx
 
 # Arguments
-- `times`: Time points
+- `times`: Time points for evaluation
 - `tg`: Gate time
-- `θ0`: Rotation angle
-- `Δ`: Detuning (qubit frequency - drive frequency)
+- `θ`: Rotation angle
 - `noise_ensemble`: EnsembleSolution of noise trajectories
 
 # Returns
-- Vector of 4×4 averaged Liouvillian matrices ⟨L_I(t)⟩
+Vector of 4×4 averaged Liouvillian matrices at each time point
 """
-function compute_average_liouvillian_interaction_picture(times, tg, θ0, Δ, noise_ensemble)
+function compute_average_interaction_liouvillian(times, tg, θ, noise_ensemble)
     n_times = length(times)
     n_samples = length(noise_ensemble)
     
-    # Store average Liouvillian at each time
-    L_avg = [zeros(ComplexF64, 4, 4) for _ in 1:n_times]
-    
-    println("Computing averaged Liouvillian (Interaction Picture)...")
-    println("  Detuning Δ = $Δ")
-    println("  Averaging over $n_samples noise realizations...")
+    L_I_avg = [zeros(ComplexF64, 4, 4) for _ in 1:n_times]
     
     for i in 1:n_samples
-        # Get noise trajectory
         noise_sol = noise_ensemble[i]
         noise_interp = linear_interpolation(noise_sol.t, noise_sol[1,:], 
                                            extrapolation_bc=Flat())
         
-        # Compute Liouvillian for this noise realization at each time
         for (j, t) in enumerate(times)
             ζ_t = noise_interp(t)
-            
-            # Build interaction-picture Hamiltonian
-            H1_I = build_interaction_picture_hamiltonian(t, tg, θ0, Δ, ζ_t)
-            
-            # Convert to superoperator
-            L_noisy = commutator_superoperator(H1_I)
-            L_avg[j] += L_noisy
-        end
-        
-        if i % 10 == 0
-            println("    Processed $i/$n_samples realizations")
+            L_I_noisy = build_interaction_liouvillian(t, tg, θ, ζ_t)
+            L_I_avg[j] += L_I_noisy
         end
     end
     
-    # Average
     for j in 1:n_times
-        L_avg[j] /= n_samples
+        L_I_avg[j] /= n_samples
     end
     
-    println("  ✓ Averaged interaction-picture Liouvillian computed!")
+    return L_I_avg
+end
+
+"""
+    compute_average_lab_liouvillian(times, tg, θ, noise_ensemble)
+
+Compute ensemble-averaged lab frame Liouvillian ⟨L_lab(t)⟩.
+
+For comparison with interaction picture approach.
+"""
+function compute_average_lab_liouvillian(times, tg, θ, noise_ensemble)
+    n_times = length(times)
+    n_samples = length(noise_ensemble)
     
-    return L_avg
+    L_lab_avg = [zeros(ComplexF64, 4, 4) for _ in 1:n_times]
+    
+    for i in 1:n_samples
+        noise_sol = noise_ensemble[i]
+        noise_interp = linear_interpolation(noise_sol.t, noise_sol[1,:], 
+                                           extrapolation_bc=Flat())
+        
+        for (j, t) in enumerate(times)
+            ζ_t = noise_interp(t)
+            L_lab_noisy = build_lab_frame_liouvillian(t, tg, θ, ζ_t)
+            L_lab_avg[j] += L_lab_noisy
+        end
+    end
+    
+    for j in 1:n_times
+        L_lab_avg[j] /= n_samples
+    end
+    
+    return L_lab_avg
 end
 
 # ============================================================================
-# Evolution with Interaction Picture Superoperator
+# Evolution Functions
 # ============================================================================
 
 """
-    evolve_interaction_picture(ρ0::Matrix, L_avg_I, times, Δ)
+    evolve_with_superoperator(ρ0_vec, L_avg, times)
 
-Evolve density matrix using averaged interaction-picture superoperator.
+Evolve vectorized density matrix using averaged superoperator.
 
-# Process:
-1. Transform ρ₀ to interaction picture: ρ_I(0) = U₀†(0) ρ₀ U₀(0) = ρ₀
-2. Evolve using ⟨L_I(t)⟩: dρ_I/dt = ⟨L_I(t)⟩ ρ_I
-3. Transform back to Schrödinger picture: ρ_S(t) = U₀(t) ρ_I(t) U₀†(t)
+Solves: dρ_vec/dt = L_avg(t) * ρ_vec
 
 # Arguments
-- `ρ0`: Initial density matrix (Schrödinger picture)
-- `L_avg_I`: Averaged interaction-picture Liouvillian from compute_average_liouvillian_interaction_picture
+- `ρ0_vec`: Initial vectorized density matrix (4×1)
+- `L_avg`: Vector of time-dependent Liouvillians
 - `times`: Time points
-- `Δ`: Detuning
 
 # Returns
-- Named tuple with ρ_evolved (Schrödinger picture), ρ_I_evolved (interaction picture), sol
+ODESolution object
 """
-function evolve_interaction_picture(ρ0::Matrix, L_avg_I, times, Δ)
-    n_times = length(times)
-    
-    # Initial state is same in both pictures at t=0
-    ρ_I_0 = ComplexF64.(vec_density_matrix(ρ0))
-    
-    # ODE for interaction picture evolution
-    function interaction_picture_ode!(dρ_I_vec, ρ_I_vec, p, t)
-        times_ref, L_avg_I_ref = p
-        # Find nearest time point
+function evolve_with_superoperator(ρ0_vec, L_avg, times)
+    function superop_ode!(dρ_vec, ρ_vec, p, t)
+        times_ref, L_avg_ref = p
         t_idx = argmin(abs.(times_ref .- t))
-        L_I_t = L_avg_I_ref[t_idx]
-        
-        # Interaction picture evolution
-        dρ_I_vec .= L_I_t * ρ_I_vec
+        L_t = L_avg_ref[t_idx]
+        dρ_vec .= L_t * ρ_vec
         return nothing
     end
     
-    # Solve interaction picture evolution
     tspan = (times[1], times[end])
-    prob = ODEProblem(interaction_picture_ode!, ρ_I_0, tspan, (times, L_avg_I))
+    prob = ODEProblem(superop_ode!, ρ0_vec, tspan, (times, L_avg))
     sol = solve(prob, Tsit5(), saveat=times)
     
-    # Convert to density matrices (interaction picture)
+    return sol
+end
+
+"""
+    evolve_interaction_picture(ρ0_lab::Matrix, L_I_avg, times, tg, θ)
+
+Evolve density matrix using interaction picture superoperator.
+
+Steps:
+1. Transform to interaction picture: ρ_I(0) = U₀†(0) ρ_lab(0) U₀(0) = ρ_lab(0)
+2. Evolve: dρ_I/dt = ⟨L_I(t)⟩ ρ_I
+3. Transform back: ρ_lab(t) = U₀(t) ρ_I(t) U₀†(t)
+
+# Returns
+Named tuple: (ρ_lab, ρ_I, times)
+"""
+function evolve_interaction_picture(ρ0_lab::Matrix, L_I_avg, times, tg, θ)
+    # Step 1: Initial state (at t=0, U₀=I, so ρ_I(0) = ρ_lab(0))
+    ρ_I_0_vec = ComplexF64.(vec_density_matrix(ρ0_lab))
+    
+    # Step 2: Evolve in interaction picture
+    sol = evolve_with_superoperator(ρ_I_0_vec, L_I_avg, times)
+    
+    # Convert to matrices
     ρ_I_evolved = [unvec_density_matrix(sol.u[i]) for i in 1:length(sol.u)]
     
-    # Transform back to Schrödinger picture: ρ_S(t) = U₀(t) ρ_I(t) U₀†(t)
-    ρ_S_evolved = similar(ρ_I_evolved)
+    # Step 3: Transform back to lab frame
+    ρ_lab_evolved = similar(ρ_I_evolved)
     for (i, t) in enumerate(times)
-        U0 = build_U0(t, Δ)
-        ρ_S_evolved[i] = U0 * ρ_I_evolved[i] * U0'
+        U0_t = U0(θ, tg, t)
+        U0d_t = U0_dagger(θ, tg, t)
+        ρ_lab_evolved[i] = U0_t * ρ_I_evolved[i] * U0d_t
     end
     
-    return (ρ_evolved=ρ_S_evolved, ρ_I_evolved=ρ_I_evolved, times=times, sol=sol, Δ=Δ)
+    return (ρ_lab=ρ_lab_evolved, ρ_I=ρ_I_evolved, times=collect(times))
+end
+
+"""
+    evolve_lab_frame(ρ0_lab::Matrix, L_lab_avg, times)
+
+Evolve density matrix using lab frame superoperator (for comparison).
+
+# Returns
+Named tuple: (ρ_lab, times)
+"""
+function evolve_lab_frame(ρ0_lab::Matrix, L_lab_avg, times)
+    ρ0_vec = ComplexF64.(vec_density_matrix(ρ0_lab))
+    sol = evolve_with_superoperator(ρ0_vec, L_lab_avg, times)
+    ρ_lab_evolved = [unvec_density_matrix(sol.u[i]) for i in 1:length(sol.u)]
+    return (ρ_lab=ρ_lab_evolved, times=collect(times))
 end
 
 # ============================================================================
-# Main Workflow Functions
+# Main Interface Functions
 # ============================================================================
 
 """
-    compute_averaged_superoperator_interaction_picture(tg, θ0, Δ, τ_c, σ, n_samples; n_times=1001)
+    compute_interaction_picture_superoperator(tg, θ, τ_c, σ, n_samples; 
+                                              n_times=1001, verbose=true)
 
-Compute the averaged Liouvillian in the INTERACTION PICTURE.
+Compute averaged interaction picture superoperator.
 
-This is the main function - compute it once, then apply to any initial state!
+This is the main function for the interaction picture approach.
+Computes ⟨L_I(t)⟩ which can be reused for any initial state.
+
+NOTE: Uses DRIVE AMPLITUDE NOISE model (multiplicative noise)
 
 # Arguments
 - `tg`: Gate time
-- `θ0`: Rotation angle
-- `Δ`: Detuning (ωq - ωd)
+- `θ`: Rotation angle  
 - `τ_c`: Noise correlation time
 - `σ`: Noise amplitude
 - `n_samples`: Number of noise realizations
+- `n_times`: Number of time points
+- `verbose`: Print progress messages
 
 # Returns
-Named tuple with L_avg_I, times, Δ, noise_ensemble
+Named tuple with:
+- `L_I_avg`: Averaged interaction picture Liouvillian
+- `times`: Time grid
+- `tg, θ`: System parameters (stored for back-transformation)
+- `noise_ensemble`: Noise ensemble used
+
+# Example
+```julia
+sup = compute_interaction_picture_superoperator(1.0, π/2, 0.1, 0.1, 100)
+result = apply_interaction_superoperator(ground_state(), sup)
+```
 """
-function compute_averaged_superoperator_interaction_picture(tg, θ0, Δ, τ_c, σ, n_samples; n_times=1001)
-    println("\n" * "="^60)
-    println("Interaction Picture: Computing Averaged Superoperator")
-    println("="^60)
-    println("Parameters:")
-    println("  tg = $tg, θ0 = $θ0, Δ = $Δ")
-    println("  τ_c = $τ_c, σ = $σ")
-    println("  n_samples = $n_samples, n_times = $n_times")
-    println()
+function compute_interaction_picture_superoperator(tg, θ, τ_c, σ, n_samples; 
+                                                   n_times=1001, verbose=true)
+    verbose && println("="^60)
+    verbose && println("Computing Interaction Picture Superoperator")
+    verbose && println("="^60)
+    verbose && println("Parameters: tg=$tg, θ=$θ")
+    verbose && println("Noise: τ_c=$τ_c, σ=$σ (DRIVE AMPLITUDE)")
+    verbose && println("Samples: $n_samples, Time points: $n_times")
+    verbose && println()
     
-    # Time grid
     times = collect(range(0, tg, length=n_times))
     dt = tg / 1000
     
-    # Generate noise ensemble
-    println("Step 1: Generating noise ensemble...")
+    verbose && println("Generating noise ensemble...")
     noise_ensemble = generate_ou_ensemble(τ_c, 0.0, σ, (0.0, tg), dt, n_samples)
-    println("  ✓ Noise ensemble generated!")
-    println()
     
-    # Compute averaged Liouvillian in interaction picture
-    println("Step 2: Computing averaged interaction-picture Liouvillian...")
-    L_avg_I = compute_average_liouvillian_interaction_picture(times, tg, θ0, Δ, noise_ensemble)
-    println()
+    verbose && println("Computing averaged interaction picture Liouvillian...")
+    L_I_avg = compute_average_interaction_liouvillian(times, tg, θ, noise_ensemble)
     
-    println("✓ Interaction-picture superoperator ready!")
-    println("  Use apply_superoperator_interaction_picture() to evolve states.")
-    println()
+    verbose && println("✓ Superoperator ready!")
+    verbose && println()
     
-    return (L_avg_I=L_avg_I, times=times, Δ=Δ, noise_ensemble=noise_ensemble,
-            tg=tg, θ0=θ0, τ_c=τ_c, σ=σ)
+    return (L_I_avg=L_I_avg, times=times, tg=tg, θ=θ, 
+            noise_ensemble=noise_ensemble)
 end
 
 """
-    apply_superoperator_interaction_picture(ρ0::Matrix, superop_I)
+    compute_lab_frame_superoperator(tg, θ, τ_c, σ, n_samples; 
+                                    n_times=1001, verbose=true)
 
-Apply the interaction-picture superoperator to evolve an initial density matrix.
+Compute averaged lab frame superoperator (for comparison).
+"""
+function compute_lab_frame_superoperator(tg, θ, τ_c, σ, n_samples; 
+                                        n_times=1001, verbose=true)
+    verbose && println("="^60)
+    verbose && println("Computing Lab Frame Superoperator")
+    verbose && println("="^60)
+    
+    times = collect(range(0, tg, length=n_times))
+    dt = tg / 1000
+    
+    verbose && println("Generating noise ensemble...")
+    noise_ensemble = generate_ou_ensemble(τ_c, 0.0, σ, (0.0, tg), dt, n_samples)
+    
+    verbose && println("Computing averaged lab frame Liouvillian...")
+    L_lab_avg = compute_average_lab_liouvillian(times, tg, θ, noise_ensemble)
+    
+    verbose && println("✓ Superoperator ready!")
+    verbose && println()
+    
+    return (L_lab_avg=L_lab_avg, times=times, tg=tg, θ=θ,
+            noise_ensemble=noise_ensemble)
+end
+
+"""
+    apply_interaction_superoperator(ρ0_lab::Matrix, superop; verbose=true)
+
+Apply interaction picture superoperator to evolve initial state.
 
 # Arguments
-- `ρ0`: Initial 2×2 density matrix
-- `superop_I`: Result from compute_averaged_superoperator_interaction_picture()
+- `ρ0_lab`: Initial 2×2 density matrix in lab frame
+- `superop`: Output from compute_interaction_picture_superoperator()
 
 # Returns
-Named tuple with ρ_evolved, ρ_I_evolved, times, Δ
+Named tuple: (ρ_lab, ρ_I, times)
 """
-function apply_superoperator_interaction_picture(ρ0::Matrix, superop_I)
-    println("Evolving using interaction-picture superoperator...")
-    result = evolve_interaction_picture(ρ0, superop_I.L_avg_I, superop_I.times, superop_I.Δ)
-    println("  ✓ Evolution complete!")
+function apply_interaction_superoperator(ρ0_lab::Matrix, superop; verbose=true)
+    verbose && println("Evolving state in interaction picture...")
     
+    result = evolve_interaction_picture(ρ0_lab, superop.L_I_avg, 
+                                       superop.times, superop.tg, superop.θ)
+    
+    verbose && println("✓ Evolution complete!")
+    return result
+end
+
+"""
+    apply_lab_superoperator(ρ0_lab::Matrix, superop; verbose=true)
+
+Apply lab frame superoperator to evolve initial state.
+"""
+function apply_lab_superoperator(ρ0_lab::Matrix, superop; verbose=true)
+    verbose && println("Evolving state in lab frame...")
+    
+    result = evolve_lab_frame(ρ0_lab, superop.L_lab_avg, superop.times)
+    
+    verbose && println("✓ Evolution complete!")
     return result
 end
 
 # ============================================================================
-# Helper Functions
+# Analysis Tools
 # ============================================================================
 
-function ground_state_matrix()
-    return ComplexF64[1.0 0.0; 0.0 0.0]
-end
+"""
+    extract_populations(ρ_evolved)
 
-function excited_state_matrix()
-    return ComplexF64[0.0 0.0; 0.0 1.0]
-end
+Extract ground and excited state populations from density matrices.
 
-function superposition_state_matrix(α::Number, β::Number)
-    norm = sqrt(abs2(α) + abs2(β))
-    α, β = α/norm, β/norm
-    ψ = [α; β]
-    return ψ * ψ'
-end
-
+# Returns
+Named tuple: (P0, P1) where P0 = ⟨0|ρ|0⟩ and P1 = ⟨1|ρ|1⟩
+"""
 function extract_populations(ρ_evolved)
     P0 = [real(ρ[1,1]) for ρ in ρ_evolved]
     P1 = [real(ρ[2,2]) for ρ in ρ_evolved]
     return (P0=P0, P1=P1)
 end
 
-# ============================================================================
-# Plotting
-# ============================================================================
-
 """
-    plot_interaction_picture_result(result; show_both=false)
+    extract_coherences(ρ_evolved)
 
-Plot results from interaction-picture evolution.
+Extract off-diagonal coherences from density matrices.
 
-If show_both=true, plots both Schrödinger and interaction picture populations.
+# Returns
+Named tuple: (ρ01, ρ10)
 """
-function plot_interaction_picture_result(result; show_both=false)
-    pops_S = extract_populations(result.ρ_evolved)
-    
-    if show_both
-        pops_I = extract_populations(result.ρ_I_evolved)
-        
-        p1 = plot(result.times, pops_S.P0, label="ρ₀₀ (Schrödinger)", 
-                 xlabel="Time", ylabel="Population", linewidth=2,
-                 title="Schrödinger Picture")
-        plot!(p1, result.times, pops_S.P1, label="ρ₁₁", linewidth=2)
-        
-        p2 = plot(result.times, pops_I.P0, label="ρ₀₀ (Interaction)", 
-                 xlabel="Time", ylabel="Population", linewidth=2,
-                 title="Interaction Picture (Δ = $(result.Δ))")
-        plot!(p2, result.times, pops_I.P1, label="ρ₁₁", linewidth=2)
-        
-        return plot(p1, p2, layout=(2,1), size=(800, 600))
-    else
-        p = plot(result.times, pops_S.P0, label="ρ₀₀ (Ground)", 
-                xlabel="Time", ylabel="Population", linewidth=2,
-                title="Interaction Picture Evolution (Δ = $(result.Δ))")
-        plot!(p, result.times, pops_S.P1, label="ρ₁₁ (Excited)", linewidth=2)
-        return p
-    end
-end
-
-# ============================================================================
-# Examples
-# ============================================================================
-
-"""
-    example_interaction_picture()
-
-Example: Evolution with interaction picture superoperator.
-"""
-function example_interaction_picture()
-    println("\n" * "="^70)
-    println("Example: Interaction Picture Formalism")
-    println("="^70)
-    
-    # Parameters
-    tg = 1.0
-    θ0 = π/2
-    Δ = 0.0  # On resonance (no detuning)
-    τ_c = 0.1
-    σ = 0.1
-    n_samples = 50
-    
-    # STEP 1: Compute interaction-picture superoperator
-    println("\n*** STEP 1: Computing superoperator (Interaction Picture) ***")
-    sup_I = compute_averaged_superoperator_interaction_picture(tg, θ0, Δ, τ_c, σ, n_samples, n_times=501)
-    
-    # STEP 2: Apply to ground state
-    println("\n*** STEP 2: Applying to ground state ***")
-    result = apply_superoperator_interaction_picture(ground_state_matrix(), sup_I)
-    
-    # Final state
-    ρ_final = result.ρ_evolved[end]
-    println("\nFinal state (Schrödinger picture):")
-    println("  ρ₀₀ = $(ρ_final[1,1])")
-    println("  ρ₁₁ = $(ρ_final[2,2])")
-    println()
-    
-    # Plot
-    display(plot_interaction_picture_result(result, show_both=true))
-    
-    return sup_I
+function extract_coherences(ρ_evolved)
+    ρ01 = [ρ[1,2] for ρ in ρ_evolved]
+    ρ10 = [ρ[2,1] for ρ in ρ_evolved]
+    return (ρ01=ρ01, ρ10=ρ10)
 end
 
 """
-    example_with_detuning()
+    purity(ρ::Matrix)
 
-Example: Show effect of detuning Δ ≠ 0.
+Compute purity Tr(ρ²) of a density matrix.
 """
-function example_with_detuning()
-    println("\n" * "="^70)
-    println("Example: Interaction Picture with Detuning")
-    println("="^70)
-    
-    # Compute superoperators for different detunings
-    Δ_values = [0.0, 0.5, 1.0]
-    results = []
-    
-    for Δ in Δ_values
-        println("\n--- Computing for Δ = $Δ ---")
-        sup_I = compute_averaged_superoperator_interaction_picture(
-            1.0, π/2, Δ, 0.1, 0.1, 30, n_times=501
-        )
-        result = apply_superoperator_interaction_picture(ground_state_matrix(), sup_I)
-        push!(results, result)
-    end
-    
-    # Plot comparison
-    plots = []
-    for (i, result) in enumerate(results)
-        pops = extract_populations(result.ρ_evolved)
-        p = plot(result.times, pops.P0, label="P₀", linewidth=2,
-                title="Δ = $(Δ_values[i])", xlabel="Time", ylabel="Population")
-        plot!(p, result.times, pops.P1, label="P₁", linewidth=2)
-        push!(plots, p)
-    end
-    
-    display(plot(plots..., layout=(3,1), size=(800, 900)))
-    
-    println("\n✓ Detuning changes the effective evolution in interaction picture!")
+function purity(ρ::Matrix)
+    return real(tr(ρ * ρ))
+end
+
+"""
+    fidelity(ρ1::Matrix, ρ2::Matrix)
+
+Compute fidelity F(ρ1, ρ2) = Tr(√(√ρ1 ρ2 √ρ1)).
+
+For simplicity, uses F = Tr(ρ1 ρ2) approximation for nearly pure states.
+"""
+function fidelity(ρ1::Matrix, ρ2::Matrix)
+    return real(tr(ρ1 * ρ2))
 end
 
 # ============================================================================
-# Help Message
+# Initial States
 # ============================================================================
 
-println("""
-╔════════════════════════════════════════════════════════════╗
-║  Interaction Picture (Dirac Picture) Module Loaded!       ║
-╚════════════════════════════════════════════════════════════╝
+"""
+    ground_state()
 
-KEY CONCEPT - Interaction Picture:
-    Split H = H₀ + H₁ where:
-    - H₀ = (Δ/2)σz  → Transforms away (free evolution)
-    - H₁ = ζ(t)/2·σz + f(t)/2·σx  → Drives evolution
+Ground state density matrix |0⟩⟨0|
+"""
+ground_state() = ComplexF64[1.0 0.0; 0.0 0.0]
 
-WORKFLOW:
-    1. Compute superoperator (interaction picture):
-       sup_I = compute_averaged_superoperator_interaction_picture(
-           tg, θ0, Δ, τ_c, σ, n_samples
-       )
-    
-    2. Apply to any initial state:
-       result = apply_superoperator_interaction_picture(ρ0, sup_I)
+"""
+    excited_state()
 
-ADVANTAGES:
-    ✓ Transforms out detuning Δ
-    ✓ Focuses on interaction dynamics
-    ✓ Better for perturbative analysis
-    ✓ Still compute once, apply to any ρ0!
+Excited state density matrix |1⟩⟨1|
+"""
+excited_state() = ComplexF64[0.0 0.0; 0.0 1.0]
 
-Examples:
-    example_interaction_picture()  - Basic usage
-    example_with_detuning()        - Show Δ effect
-""")
+"""
+    superposition_state(α, β)
+
+Superposition state density matrix |ψ⟩⟨ψ| where |ψ⟩ = α|0⟩ + β|1⟩
+"""
+function superposition_state(α::Number, β::Number)
+    norm = sqrt(abs2(α) + abs2(β))
+    α, β = α/norm, β/norm
+    ψ = [α; β]
+    return ψ * ψ'
+end
+
+"""
+    thermal_state(T, ω)
+
+Thermal state at temperature T with level spacing ω.
+ρ_thermal = exp(-ω/T) / Z where Z = 1 + exp(-ω/T)
+"""
+function thermal_state(T, ω)
+    if T == 0
+        return ground_state()
+    end
+    Z = 1 + exp(-ω/T)
+    p0 = 1/Z
+    p1 = exp(-ω/T)/Z
+    return ComplexF64[p0 0.0; 0.0 p1]
+end
+
+# ============================================================================
+# Export Main Interface
+# ============================================================================
+
+export compute_interaction_picture_superoperator, compute_lab_frame_superoperator
+export apply_interaction_superoperator, apply_lab_superoperator
+export extract_populations, extract_coherences, purity, fidelity
+export ground_state, excited_state, superposition_state, thermal_state
+export U0, U0_dagger, H_lab, H_interaction
+export generate_ou_noise, generate_ou_ensemble
+
+println("✓ InteractionPictureSuperoperator.jl loaded successfully")
