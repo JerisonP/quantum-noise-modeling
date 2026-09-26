@@ -1,0 +1,14 @@
+# Julia: a library does not commit its resolved Manifest
+/Manifest.toml
+/test/Manifest.toml
+
+# Jupyter
+.ipynb_checkpoints/
+*-checkpoint.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
