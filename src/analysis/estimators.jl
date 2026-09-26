@@ -107,7 +107,7 @@ One-sided PSD from an autocovariance, S(f) = 4∫₀^∞ C(τ) cos(2πfτ) dτ
 
 For the exact autocovariance of a sampled sequence (and enough lags) this
 equals that sequence's exact PSD. The old implementation used 4Δτ Σ_{k≥0},
-which counts C_0 twice and adds a constant 2Δτ·C_0 at every frequency (AUDIT B2).
+which counts C_0 twice and adds a constant 2Δτ·C_0 at every frequency.
 Truncating at a finite maximum lag causes ripple, and a truncated
 *estimated* ACF is biased at f ≲ 1/τ_max.
 """

@@ -5,12 +5,12 @@
 Generate classical noise ζ(t) for a driven qubit, **validate that it has the
 statistics it claims**, and propagate the qubit under it.
 
-Noise models: Ornstein–Uhlenbeck, white, and 1/f^α (Kasdin fractional
-differencing, including the nonstationary pink-noise case α = 1).
+Noise models: Ornstein–Uhlenbeck (exact discretisation), white, 1/f^α (Kasdin
+fractional differencing, including the nonstationary pink-noise case α = 1), and
+band-limited stationary 1/f (matching the Mathematica kernel Ci(100|τ|) − Ci(|τ|)).
 
 > 🚧 This is a ground-up rewrite, in progress. See [`docs/ROADMAP.md`](docs/ROADMAP.md)
-> for the step plan and [`docs/AUDIT.md`](docs/AUDIT.md) for what was wrong
-> before and why.
+> for the step plan.
 
 ## Install
 
@@ -44,7 +44,7 @@ theoretical_psd(ou, 1.0; dt = 0.01)          # exact PSD of the sampled sequence
 |----------|------------|
 | C(τ) | autocovariance E[(ζ(t)−μ)(ζ(t+τ)−μ)]; ρ = C/C(0) is the autocorrelation |
 | S(f) | **one-sided**, f in cycles per unit time, ∫₀^∞ S df = variance |
-| 1/f^α amplitude | S(f) ≈ 2·Q_psd/(2πf)^α; innovations Q_d = Q_psd·Δt^(α−1) |
+| 1/f^α amplitude | `Q_psd` is Kasdin's Q: S(f) ≈ 2·Q_psd/(2πf)^α (one-sided); innovations Q_d = Q_psd·Δt^(α−1) |
 | `dt` in theory functions | `nothing` → continuous process; a value → exactly the sampled sequence |
 | Randomness | every generator takes `rng`; tests use `StableRNGs` |
 
@@ -53,11 +53,11 @@ theoretical_psd(ou, 1.0; dt = 0.01)          # exact PSD of the sampled sequence
 ```
 src/
   QuantumNoiseSimulator.jl   module, exports
-  noise/                     ensemble container, model interface, OU / white / 1/f^α
+  noise/                     ensemble container, model interface, OU / white / 1/f^α / band-limited 1/f
+  analysis/                  estimators (ACF, periodogram, Wiener–Khinchin) and fits
 test/                        one test file per source file + Aqua hygiene checks
-docs/                        explainer per step, audit, roadmap
+docs/                        explainer per step, roadmap, REFERENCES (formula → paper)
 notebooks/                   validation appendix (rebuilt in Step 6)
-scripts/audit/               independent NumPy checks behind docs/AUDIT.md
 ```
 
 ## Running the tests
@@ -76,3 +76,8 @@ push and pull request.
 - J. R. M. Hosking, "Fractional differencing", *Biometrika* **68**, 165 (1981).
 - P. Dutta and P. M. Horn, "Low-frequency fluctuations in solids: 1/f noise",
   *Rev. Mod. Phys.* **53**, 497 (1981).
+- J. Ruseckas and B. Kaulakys, "1/f noise from nonlinear stochastic differential
+  equations", *Phys. Rev. E* **81**, 031105 (2010).
+- Wikipedia, "Ornstein–Uhlenbeck process".
+
+See [`docs/REFERENCES.md`](docs/REFERENCES.md) for which equation each line of code implements.

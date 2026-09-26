@@ -15,7 +15,7 @@
     @test_throws ArgumentError autocovariance(e; demean=:median)
 end
 
-@testset "autocovariance: known/ensemble mean unbiased, per-trajectory mean biased (AUDIT A2)" begin
+@testset "autocovariance: known/ensemble mean unbiased, per-trajectory mean biased" begin
     # OU with T = 10 = 20 τ_c. Per-trajectory demeaning subtracts ≈ Var(x̄_T) ≈ 2τ_cσ²/T = 0.1.
     m, dt = OUNoiseModel(1.0, 0.5), 0.01
     e = generate_ensemble(m, (0.0, 10.0), dt, 2000; rng=StableRNG(12))
@@ -55,7 +55,7 @@ end
     @test within_se(mean(p.S), 2σ^2 * dt, sqrt(2) * 2σ^2 * dt / sqrt(500 * 32))
 end
 
-@testset "Wiener–Khinchin: exact for exact input; old formula off by 2Δτ·C(0) (AUDIT B2)" begin
+@testset "Wiener–Khinchin: exact for exact input; old formula off by 2Δτ·C(0)" begin
     m, dt = OUNoiseModel(1.3, 0.5), 0.01
     K = 5000                                                 # ϕ^K = e^{-100}: truncation negligible
     lags = (0:K) .* dt
