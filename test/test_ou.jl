@@ -17,6 +17,18 @@ end
     @test theoretical_psd(m, 1 / (2π * 0.5)) ≈ theoretical_psd(m, 0.0) / 2   # corner frequency
 end
 
+@testset "conventions: Wikipedia parameters and one-sided Wiener–Khinchin" begin
+    m = OUNoiseModel(1.3, 0.5)
+    θ, σ_W = 1 / m.τ_c, m.σ * sqrt(2 / m.τ_c)          # Wikipedia *Definition* parameters
+    @test σ_W^2 / (2θ) ≈ stationary_variance(m)         # Wikipedia stationary variance
+    # S(f) = 4∫₀^∞ C(τ)cos(2πfτ)dτ  (Dutta & Horn p. 498; Ruseckas & Kaulakys Eq. 5)
+    τ = range(0, 40 * m.τ_c; length=400_001)
+    for f in (0.0, 0.3, 2.0)
+        S = 4 * trapz(τ, [theoretical_autocovariance(m, x) * cos(2π * f * x) for x in τ])
+        @test S ≈ theoretical_psd(m, f) rtol = 1e-6
+    end
+end
+
 @testset "sampled PSD: integrates to σ² and matches the Lorentzian at low f" begin
     m, dt = OUNoiseModel(1.3, 0.5), 0.01
     f = range(0, 1 / (2dt); length=200_001)

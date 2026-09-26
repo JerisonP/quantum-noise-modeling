@@ -13,6 +13,9 @@ Hamiltonian, and (in later modules) propagate the qubit under that noise.
 | `noise/ou.jl`               | `OUNoiseModel` — Ornstein–Uhlenbeck, exact discretisation |
 | `noise/white.jl`            | `WhiteNoiseModel` — i.i.d. Gaussian samples             |
 | `noise/fractional.jl`       | `FractionalNoiseModel` — 1/f^α noise (Kasdin 1995)      |
+| `noise/bandlimited.jl`      | `BandLimitedOneOverFNoiseModel` — stationary 1/f in [fl, fh] |
+| `analysis/estimators.jl`    | `autocovariance`, `periodogram`, `wiener_khinchin_psd`  |
+| `analysis/fits.jl`          | `ols`, `powerlaw_fit`, `exponential_fit`, `student_t_quantile` |
 
 # Quick start
 
@@ -30,13 +33,17 @@ module QuantumNoiseSimulator
 
 using FFTW: plan_rfft, plan_irfft
 using Random: AbstractRNG, default_rng
-using SpecialFunctions: gamma
+using SpecialFunctions: gamma, cosint, beta_inc_inv
+using Statistics: mean, std
 
 include("noise/ensemble.jl")
 include("noise/interface.jl")
 include("noise/ou.jl")
 include("noise/white.jl")
 include("noise/fractional.jl")
+include("noise/bandlimited.jl")
+include("analysis/estimators.jl")
+include("analysis/fits.jl")
 
 # Container
 export NoiseEnsemble, times, samples, ntimes, ntrajectories, timestep, subensemble
@@ -46,9 +53,13 @@ export AbstractNoiseModel, generate_ensemble
 export noise_mean, stationary_variance, theoretical_autocovariance, theoretical_psd
 
 # Models
-export OUNoiseModel, WhiteNoiseModel, FractionalNoiseModel
+export OUNoiseModel, WhiteNoiseModel, FractionalNoiseModel, BandLimitedOneOverFNoiseModel
 
 # 1/f^α building blocks (used by the validation layer and the tests)
 export driving_variance, pulse_response, ar_coefficients, fir_filter, ar_filter
+
+# Estimators and fits
+export autocovariance, periodogram, wiener_khinchin_psd
+export ols, student_t_quantile, powerlaw_fit, exponential_fit
 
 end # module

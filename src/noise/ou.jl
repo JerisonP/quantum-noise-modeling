@@ -9,16 +9,27 @@
 Ornstein–Uhlenbeck process, the standard model of noise with a single
 correlation time τ_c:
 
-    dζ = −(ζ − μ)/τ_c dt + √(2σ²/τ_c) dW
+    dζ = −(ζ − μ)/τ_c dt + σ √(2/τ_c) dW
+
+This is the parameterisation in Wikipedia's *Ornstein–Uhlenbeck process →
+Numerical simulation* section (stationary std σ, correlation time τ_c). The
+*Definition* section's form dx = θ(μ − x)dt + σ_W dW maps to it through
+
+    θ = 1/τ_c,     σ_W = σ √(2/τ_c)     (stationary variance σ_W²/(2θ) = σ²).
 
 # Exact statistics (stationary)
 - mean μ, variance σ²
 - autocovariance  C(τ) = σ² exp(−|τ|/τ_c)
-- one-sided PSD   S(f) = 4σ²τ_c / (1 + (2πfτ_c)²), a Lorentzian with corner f_c = 1/(2πτ_c)
+- one-sided PSD   S(f) = 4σ²τ_c / (1 + (2πfτ_c)²), a Lorentzian with corner f_c = 1/(2πτ_c).
+  This is S(f) = 4∫₀^∞ C(τ) cos(2πfτ) dτ (Dutta & Horn p. 498, Ruseckas & Kaulakys
+  Eq. 5), and the shape is Dutta & Horn Eq. 7.
 
 # How it is generated (exactly, with no integrator error)
-The OU transition density is Gaussian and known in closed form, so on a grid
-of step Δt the samples obey the AR(1) recursion
+Wikipedia's *Formal solution* section solves the SDE exactly:
+x_t = μ + (x_s − μ)e^{−θ(t−s)} + σ_W ∫_s^t e^{−θ(t−u)} dW_u. The stochastic
+integral is Gaussian with mean 0 and variance σ²(1 − e^{−2(t−s)/τ_c}), and it is
+independent of x_s. Applying that solution over each grid step gives the AR(1)
+recursion
 
     ζ_{k+1} − μ = ϕ (ζ_k − μ) + σ √(1 − ϕ²) ξ_k,     ϕ = exp(−Δt/τ_c),  ξ_k ~ N(0, 1)
 
