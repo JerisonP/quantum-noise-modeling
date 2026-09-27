@@ -9,13 +9,13 @@ Each step is one reviewable commit (or PR): code, tests, and an explainer in
 | 1 | Noise models | `NoiseEnsemble`, `OUNoiseModel` (exact AR(1)), `WhiteNoiseModel`, `FractionalNoiseModel` (FIR + AR), stationary theory | ✅ done |
 | 1b | Band-limited 1/f | `BandLimitedOneOverFNoiseModel` (Mathematica kernel), FFT synthesis with exact variance | ✅ done |
 | 2 | Estimators | FFT autocovariance with explicit `demean = :known / :ensemble / :trajectory`, periodogram, *corrected* Wiener–Khinchin, OLS, t quantiles, power-law and exponential fits | ✅ done |
-| 3 | Exact finite-record expectations + validation | E[ACF estimator] and E[periodogram] for every model and α, `validate_noise_model` returning a report struct with pass/fail from standard errors | ⏳ |
+| 3 | Exact finite-record expectations + validation | `expected_autocovariance` (all 3 demean modes), `expected_periodogram`, `expected_variance` for every model; `validate_noise_model` → `ValidationReport` with Bonferroni-corrected z-checks | ✅ done |
 | 4 | Quantum layer | Pauli algebra, U₀ frame, Liouvillian, averaged propagator Λ(t), states, gate fidelity, with analytic tests (zero noise → identity, static-noise closed form, trace preservation, complete positivity) | ⏳ |
 | 5 | IO + plotting | CSV save/load round trip (the old `load_propagator` could not read `save_propagator` files), Plots as a package **extension** so the core does not depend on Plots | ⏳ |
 | 6 | Notebook | `notebooks/Noise_Validation.ipynb` rebuilt section by section on the tested API, with every claim computed rather than typed; own `Project.toml` | ⏳ |
 | 7 | Release | README polish, docs index, `v0.2.0` tag, archived figures/tables | ⏳ |
 
-Steps 0–2: 286 tests pass locally (Julia 1.13).
+Steps 0–3 complete; all tests pass locally.
 
 ## Decisions (2026-09-26)
 

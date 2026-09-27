@@ -54,7 +54,7 @@ theoretical_psd(ou, 1.0; dt = 0.01)          # exact PSD of the sampled sequence
 src/
   QuantumNoiseSimulator.jl   module, exports
   noise/                     ensemble container, model interface, OU / white / 1/f^α / band-limited 1/f
-  analysis/                  estimators (ACF, periodogram, Wiener–Khinchin) and fits
+  analysis/                  estimators, fits, exact expectations, validate_noise_model
 test/                        one test file per source file + Aqua hygiene checks
 docs/                        explainer per step, roadmap, REFERENCES (formula → paper)
 notebooks/                   validation appendix (rebuilt in Step 6)

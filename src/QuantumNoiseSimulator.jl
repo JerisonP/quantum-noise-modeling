@@ -16,6 +16,8 @@ Hamiltonian, and (in later modules) propagate the qubit under that noise.
 | `noise/bandlimited.jl`      | `BandLimitedOneOverFNoiseModel` — stationary 1/f in [fl, fh] |
 | `analysis/estimators.jl`    | `autocovariance`, `periodogram`, `wiener_khinchin_psd`  |
 | `analysis/fits.jl`          | `ols`, `powerlaw_fit`, `exponential_fit`, `student_t_quantile` |
+| `analysis/expectations.jl`  | `expected_autocovariance`, `expected_periodogram`, `expected_variance` |
+| `analysis/validation.jl`    | `validate_noise_model`, `ValidationReport`                |
 
 # Quick start
 
@@ -31,9 +33,9 @@ samples(ens)                                 # 4001 × 1000 matrix, one column p
 """
 module QuantumNoiseSimulator
 
-using FFTW: plan_rfft, plan_irfft
+using FFTW: plan_rfft, plan_irfft, rfft
 using Random: AbstractRNG, default_rng
-using SpecialFunctions: gamma, cosint, beta_inc_inv
+using SpecialFunctions: gamma, cosint, beta_inc_inv, erfcinv
 using Statistics: mean, std
 
 include("noise/ensemble.jl")
@@ -44,6 +46,8 @@ include("noise/fractional.jl")
 include("noise/bandlimited.jl")
 include("analysis/estimators.jl")
 include("analysis/fits.jl")
+include("analysis/expectations.jl")
+include("analysis/validation.jl")
 
 # Container
 export NoiseEnsemble, times, samples, ntimes, ntrajectories, timestep, subensemble
@@ -61,5 +65,9 @@ export driving_variance, pulse_response, ar_coefficients, fir_filter, ar_filter
 # Estimators and fits
 export autocovariance, periodogram, wiener_khinchin_psd
 export ols, student_t_quantile, powerlaw_fit, exponential_fit
+
+# Exact expectations and validation
+export expected_autocovariance, expected_periodogram, expected_variance
+export validate_noise_model, ValidationReport, ValidationCheck, passed
 
 end # module
