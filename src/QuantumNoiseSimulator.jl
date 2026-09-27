@@ -24,6 +24,8 @@ brute force (thesis Eq. 3.12): H(t) = f_x(t)/2·σx + ξ(t)/2·σz.
 | `quantum/results.jl`        | ⟨ρ_j(t_g)⟩, eigenvalues, fidelity (Eqs. 3.21, 3.24, 3.25) with standard errors |
 | `quantum/small_parameter.jl`| δ (Eq. 3.20) and `delta_sweep`, the reference curves   |
 | `quantum/master_equation.jl`| `tcl2_evolution`, the 2nd-order master equation being validated |
+| `io/csv.jl`                 | exact CSV save/load: ensembles, channels, δ sweeps (also the hand-in format) |
+| `plotting.jl`               | plot function stubs; the methods live in `ext/QuantumNoiseSimulatorPlotsExt.jl` |
 
 # Quick start
 
@@ -61,6 +63,8 @@ include("quantum/solvers.jl")
 include("quantum/results.jl")
 include("quantum/small_parameter.jl")
 include("quantum/master_equation.jl")
+include("io/csv.jl")
+include("plotting.jl")
 
 # Container
 export NoiseEnsemble, times, samples, ntimes, ntrajectories, timestep, subensemble
@@ -102,6 +106,14 @@ export fidelity_map, fidelity_trace_formula, trajectory_errors, average_error, a
 export batch_estimate, choi_matrix, is_cptp
 
 # Small parameter δ (Eq. 3.20) and the 2nd-order master equation under test
-export small_noise_parameter, sigma_for_delta, delta_sweep, tcl2_evolution
+export small_noise_parameter, sigma_for_delta, delta_sweep, tcl2_evolution, tcl2_delta_sweep
+
+# Input/output (CSV)
+export read_table, save_ensemble, load_ensemble, save_channel, load_channel
+export save_delta_sweep, load_delta_sweep
+
+# Plotting (methods are added by the Plots extension)
+export plot_noise_traces, plot_validation, plot_state_evolution, plot_timestep_convergence
+export plot_error_vs_delta, plot_eigenvalues_vs_delta
 
 end # module

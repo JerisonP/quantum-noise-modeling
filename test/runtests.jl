@@ -29,4 +29,6 @@ trapz(x, y) = sum((x[i+1] - x[i]) * (y[i+1] + y[i]) / 2 for i in 1:length(x)-1)
     @testset "Small parameter δ (Eq. 3.20)" begin include("test_small_parameter.jl") end
     @testset "2nd-order master equation" begin include("test_master_equation.jl") end
     @testset "Code quality (Aqua)" begin include("test_aqua.jl") end
+    @testset "CSV input/output" begin include("test_io.jl") end
+    @testset "Plots extension" begin include("test_plots.jl") end
 end

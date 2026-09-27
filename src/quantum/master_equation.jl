@@ -70,3 +70,23 @@ function tcl2_evolution(g::CosineGate, model::Union{OUNoiseModel,BandLimitedOneO
     end
     return (times=ts, S=S)
 end
+
+"""
+    tcl2_delta_sweep(g, τ_c, δs; nsteps=2000) -> Vector of rows
+
+The 2nd-order master equation at each δ, with OU noise and σ from Eq. 3.20. The rows
+have the same shape as [`delta_sweep`](@ref) minus the standard errors:
+`(δ, σ, ε, states = (zp = (ρ, λ), …))`. So they can be saved with `save_delta_sweep`
+and plotted as a comparison curve next to the brute-force result.
+"""
+function tcl2_delta_sweep(g::CosineGate, τc::Real, δs; nsteps::Integer=2000)
+    return map(collect(δs)) do δ
+        σ = sigma_for_delta(δ, τc, g.θ, g.tg)
+        S = tcl2_evolution(g, OUNoiseModel(σ, τc); nsteps).S[end]
+        states = map(cardinal_states()) do ρ0
+            ρ = apply_channel(S, ρ0)
+            (ρ=ρ, λ=density_matrix_eigenvalues(ρ))
+        end
+        (δ=δ, σ=σ, ε=1 - fidelity_map(S, ideal_gate(g)), states=states)
+    end
+end

@@ -56,6 +56,9 @@ src/
   noise/                     ensemble container, model interface, OU / white / 1/f^α / band-limited 1/f
   analysis/                  estimators, fits, exact expectations, validate_noise_model
   quantum/                   thesis Eq. 3.12, H = f_x/2·σx + ξ/2·σz: brute-force solvers, ⟨ρ⟩, fidelity, δ
+  io/                        exact CSV save/load (ensembles, channels, δ sweeps; also the hand-in format)
+  plotting.jl                plot function stubs (need `using Plots`)
+ext/                         Plots extension: the plotting code, loaded only after `using Plots`
 test/                        one test file per source file + Aqua hygiene checks
 docs/                        explainer per step, roadmap, REFERENCES (formula → paper)
 notebooks/                   validation appendix (rebuilt in Step 6)

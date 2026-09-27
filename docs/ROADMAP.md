@@ -11,11 +11,11 @@ Each step is one reviewable commit (or PR): code, tests, and an explainer in
 | 2 | Estimators | FFT autocovariance with explicit `demean = :known / :ensemble / :trajectory`, periodogram, *corrected* Wiener–Khinchin, OLS, t quantiles, power-law and exponential fits | ✅ done |
 | 3 | Exact finite-record expectations + validation | `expected_autocovariance` (all 3 demean modes), `expected_periodogram`, `expected_variance` for every model; `validate_noise_model` → `ValidationReport` with Bonferroni-corrected z-checks | ✅ done |
 | 4 | Brute-force qubit solver | thesis Eq. 3.12; two independent solvers (`:magnus`, `:rk4`); ⟨ρ_j(t_g)⟩, eigenvalues, F̄, ⟨ε⟩ with standard errors (Eqs. 3.21, 3.24, 3.25); `timestep_convergence`; δ (Eq. 3.20) and `delta_sweep`; `tcl2_evolution` (2nd-order equation under test) | ✅ done |
-| 5 | IO + plotting | CSV save/load round trip (the old `load_propagator` could not read `save_propagator` files), Plots as a package **extension** so the core does not depend on Plots | ⏳ |
+| 5 | IO + plotting | exact CSV round trip read by column name (fixes the old `load_propagator` bug) for ensembles, channels and δ sweeps, which is also the hand-in format for teammates' results; Plots as a package **extension** with 6 plot functions (validation, state evolution, convergence, Figs. 3.2–3.22) | ✅ done |
 | 6 | Notebook | `notebooks/Noise_Validation.ipynb` rebuilt section by section on the tested API, with every claim computed rather than typed; own `Project.toml` | ⏳ |
 | 7 | Release | README polish, docs index, `v0.2.0` tag, archived figures/tables | ⏳ |
 
-Steps 0–4 complete.
+Steps 0–5 complete.
 
 ## Decisions (2026-09-26)
 
