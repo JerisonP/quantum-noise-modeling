@@ -12,10 +12,10 @@ Each step is one reviewable commit (or PR): code, tests, and an explainer in
 | 3 | Exact finite-record expectations + validation | `expected_autocovariance` (all 3 demean modes), `expected_periodogram`, `expected_variance` for every model; `validate_noise_model` → `ValidationReport` with Bonferroni-corrected z-checks | ✅ done |
 | 4 | Brute-force qubit solver | thesis Eq. 3.12; two independent solvers (`:magnus`, `:rk4`); ⟨ρ_j(t_g)⟩, eigenvalues, F̄, ⟨ε⟩ with standard errors (Eqs. 3.21, 3.24, 3.25); `timestep_convergence`; δ (Eq. 3.20) and `delta_sweep`; `tcl2_evolution` (2nd-order equation under test) | ✅ done |
 | 5 | IO + plotting | exact CSV round trip read by column name (fixes the old `load_propagator` bug) for ensembles, channels and δ sweeps, which is also the hand-in format for teammates' results; Plots as a package **extension** with 6 plot functions (validation, state evolution, convergence, Figs. 3.2–3.22) | ✅ done |
-| 6 | Notebook | `notebooks/Noise_Validation.ipynb` rebuilt section by section on the tested API, with every claim computed rather than typed; own `Project.toml` | ⏳ |
+| 6 | Notebook | `notebooks/Noise_Validation.ipynb` rebuilt on the tested API: Part I noise validation (1/f, band-limited, OU, white), Part II brute-force reference for thesis Ch. 3 (solver checks, exact limit, convergence, δ sweeps for t_g = τ_c, τ_c/10, τ_c/100 vs the 2nd-order equation, CSV exports); own `Project.toml`; τ_c = 1, θ = π/2 | ✅ done |
 | 7 | Release | README polish, docs index, `v0.2.0` tag, archived figures/tables | ⏳ |
 
-Steps 0–5 complete.
+Steps 0–6 complete.
 
 ## Decisions (2026-09-26)
 

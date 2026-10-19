@@ -81,4 +81,4 @@ spectrum to 10⁻⁹ (tested).
 residuals. Periodogram ordinates are roughly independent, but ACF values at
 neighbouring lags are strongly correlated, so an `exponential_fit` SE is too
 optimistic. The honest error bar on τ̂_c comes from replicate ensembles (old
-notebook §7, rebuilt in Step 6). The fit SE is reported but not relied on.
+notebook §7; the rebuilt notebook's §3 prints only the fit SE). The fit SE is reported but not relied on.

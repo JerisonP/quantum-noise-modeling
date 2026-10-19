@@ -83,7 +83,7 @@ code lives in `ext/QuantumNoiseSimulatorPlotsExt.jl`:
 | `plot_state_evolution(r, ρ0)` | ⟨σx⟩, ⟨σy⟩, ⟨σz⟩, Tr ρ² vs t/t_g | — |
 | `plot_timestep_convergence(rows)` | paired Δε ± 2 SE vs dt, with the ±1 SE band of ε | convergence check |
 | `plot_error_vs_delta(rows; compare)` | ⟨ε⟩ ± 2 SE vs δ, log scale | Figs. 3.20–3.22 |
-| `plot_eigenvalues_vs_delta(rows, :xp; compare)` | Re λ₁, Re λ₂ (± 2 SE), Im λ₁, Im λ₂ vs δ | Figs. 3.2–3.19 |
+| `plot_eigenvalues_vs_delta(rows, :xp; compare, title)` | Re λ₁, Re λ₂ (± 2 SE), Im λ₁, Im λ₂ vs δ | Figs. 3.2–3.19 |
 
 Every function *returns* the plot and has no side effects. Show it with `display(p)`,
 save it with `savefig(p, "fig.png")`, and combine plots with `plot(p1, p2; layout = (2, 1))`.

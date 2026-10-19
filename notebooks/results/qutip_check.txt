@@ -1,0 +1,10 @@
+# QuTiP cross-check output (notebooks/qutip_check.py), run 2026-10-19 from notebooks/:
+#   julia --project=. export_for_qutip.jl
+#   uv run --python 3.12 --with qutip --with numpy python qutip_check.py
+# Inputs: results/qutip_noise.csv, results/package_out.csv (300 OU paths, t_g = tau_c = 1, theta = pi/2, delta = 0.5, Xoshiro(11))
+QuTiP 5.3.1: 300 trajectories in 11.2 s
+  eps (QuTiP)   = 0.075217 ± 0.004844
+  eps (package) = 0.075217
+  largest per-trajectory |eps_QuTiP - eps_package| = 1.7e-08   (pass: < 1e-6)
+  final <rho> from |0>: largest element difference = 4.5e-09   (pass: < 1e-6)
+  final <rho> from |+>: largest element difference = 4.2e-09   (pass: < 1e-6)

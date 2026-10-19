@@ -91,7 +91,7 @@ function plot_error_vs_delta(rows::AbstractVector; compare=nothing,
     return p
 end
 
-function plot_eigenvalues_vs_delta(rows::AbstractVector, state::Symbol; compare=nothing)
+  function plot_eigenvalues_vs_delta(rows::AbstractVector, state::Symbol; compare=nothing, title="Eigenvalues of ⟨ρ_$state(t_g)⟩")
     state in keys(first(rows).states) ||
         throw(ArgumentError("state must be one of $(keys(first(rows).states)), got :$state"))
     cmp = _pairs(compare)
@@ -114,7 +114,7 @@ function plot_eigenvalues_vs_delta(rows::AbstractVector, state::Symbol; compare=
         push!(panels, sp)
     end
     return Plots.plot(panels...; layout=(2, 2), size=(1000, 700),
-                      plot_title="Eigenvalues of ⟨ρ_$state(t_g)⟩", plot_titlefontsize=12)
+                        plot_title=title, plot_titlefontsize=12)
 end
 
 end # module

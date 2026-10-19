@@ -36,5 +36,6 @@ end
     f = joinpath(mktempdir(), "error_vs_delta.png")
     savefig(plots[5], f)
     @test isfile(f) && filesize(f) > 1000
+    @test plot_eigenvalues_vs_delta(rows, :yp; title="custom title") isa Plots.Plot
     @test_throws ArgumentError plot_eigenvalues_vs_delta(rows, :bogus)
 end

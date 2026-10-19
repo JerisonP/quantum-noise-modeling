@@ -1,6 +1,6 @@
 # QuantumNoiseSimulator
 
-[![CI](https://github.com/OWNER/REPO/actions/workflows/CI.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/CI.yml)
+[![CI](https://github.com/JerisonP/quantum-noise-modeling/actions/workflows/CI.yml/badge.svg)](https://github.com/JerisonP/quantum-noise-modeling/actions/workflows/CI.yml)
 
 Generate classical noise ζ(t) for a driven qubit, **validate that it has the
 statistics it claims**, and propagate the qubit under it.
@@ -8,9 +8,6 @@ statistics it claims**, and propagate the qubit under it.
 Noise models: Ornstein–Uhlenbeck (exact discretisation), white, 1/f^α (Kasdin
 fractional differencing, including the nonstationary pink-noise case α = 1), and
 band-limited stationary 1/f (matching the Mathematica kernel Ci(100|τ|) − Ci(|τ|)).
-
-> 🚧 This is a ground-up rewrite, in progress. See [`docs/ROADMAP.md`](docs/ROADMAP.md)
-> for the step plan.
 
 ## Install
 
@@ -61,7 +58,7 @@ src/
 ext/                         Plots extension: the plotting code, loaded only after `using Plots`
 test/                        one test file per source file + Aqua hygiene checks
 docs/                        explainer per step, roadmap, REFERENCES (formula → paper)
-notebooks/                   validation appendix (rebuilt in Step 6)
+notebooks/                   Noise_Validation.ipynb (noise validation + brute-force reference), figures/, results/
 ```
 
 ## Running the tests
@@ -85,3 +82,7 @@ push and pull request.
 - Wikipedia, "Ornstein–Uhlenbeck process".
 
 See [`docs/REFERENCES.md`](docs/REFERENCES.md) for which equation each line of code implements.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

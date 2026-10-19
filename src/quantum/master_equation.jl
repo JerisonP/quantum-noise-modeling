@@ -9,9 +9,11 @@
 # are identical (thesis §3.2.3). For Gaussian noise, both are the time-local
 # 2nd-order equation
 #
-#     d⟨ρ_I⟩/dt = −∫₀ᵗ C(t − s) [V(t), [V(s), ⟨ρ_I⟩]] ds,     V(t) = ½ n(t)·σ,
+#     d⟨ρ_I⟩/dt = −iμ[V(t), ⟨ρ_I⟩] − ∫₀ᵗ C(t − s) [V(t), [V(s), ⟨ρ_I⟩]] ds,     V(t) = ½ n(t)·σ,
 #
-# where C(τ) = ⟨ξ(t)ξ(t+τ)⟩ (compare PLME Eqs. 1.34–1.36 with g = 1, Â(t) = V(t)).
+# where μ = ⟨ξ⟩ = `noise_mean(model)` (the first-order term; zero for the thesis's OU
+# noise) and C(τ) = ⟨(ξ(t) − μ)(ξ(t+τ) − μ)⟩ (compare PLME Eqs. 1.34–1.36 with g = 1,
+# Â(t) = V(t)).
 # Why it is in the package:
 #   1. It reproduces the teammates' 2nd-order curves from the same gate and noise
 #      objects. That confirms the conventions (σ, time unit, δ) before comparing.
@@ -33,11 +35,13 @@ same convention as `GateResult.S`). Use it with `apply_channel`, `fidelity_map`,
 `is_cptp` and `density_matrix_eigenvalues`.
 
 The model must have a continuous-time autocovariance: `OUNoiseModel` or
-`BandLimitedOneOverFNoiseModel`.
+`BandLimitedOneOverFNoiseModel`. A nonzero `noise_mean(model)` enters through the
+first-order term −iμ[V(t), ρ].
 """
 function tcl2_evolution(g::CosineGate, model::Union{OUNoiseModel,BandLimitedOneOverFNoiseModel};
                         nsteps::Integer=2000)
     nsteps >= 1 || throw(ArgumentError("nsteps must be ≥ 1"))
+    μ = noise_mean(model)                             # mean of ξ: first-order term −iμ[V, ρ]
     tt = range(0, g.tg; length=2nsteps + 1)          # half-step grid
     hh = step(tt)
     ad = map(tt) do x                                 # superoperator of ρ → [V(x), ρ]
@@ -47,13 +51,14 @@ function tcl2_evolution(g::CosineGate, model::Union{OUNoiseModel,BandLimitedOneO
     end
     C = [theoretical_autocovariance(model, l * hh) for l in 0:length(tt)-1]
     K = [zeros(ComplexF64, 4, 4) for _ in tt]         # generator K(t) = −ad(t)·∫₀ᵗ C(t−s) ad(s) ds
+    K[1] = -im * μ .* ad[1]                           # mean term at t = 0 (the loop starts at 2)
     for k in 2:length(tt)
         B = zeros(ComplexF64, 4, 4)
         for j in 1:k
             w = (j == 1 || j == k) ? hh / 2 : hh
             B .+= (w * C[k-j+1]) .* ad[j]
         end
-        K[k] = -ad[k] * B
+        K[k] = -im * μ .* ad[k] .- ad[k] * B
     end
     h = 2hh
     Λ = kron(I2, I2)                                  # interaction-picture map ⟨L_I(t)⟩

@@ -1,6 +1,6 @@
 name = "QuantumNoiseSimulator"
 uuid = "6456640c-f5bc-48a2-8f4e-1463e2111e64"
-authors = ["TODO: your name"]
+authors = ["Jerison Parra <jerison.parra0@gmail.com>"]
 version = "0.2.0"
 
 [deps]

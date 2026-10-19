@@ -41,3 +41,26 @@ end
         @test all(abs.(real.(fs.ρ - apply_channel(S2, ρ0))) .<= 5 .* real.(fs.se) .+ 1e-4)
     end
 end
+
+@testset "TCL2 with nonzero-mean OU noise matches brute force" begin
+    # A mean μ adds the first-order term −iμ[V(t), ρ] (a static detuning). Without it,
+    # TCL2 is blind to μ and its error is −22% (μ = σ/2) and −54% (μ = σ) in ε.
+    g, τc = CosineGate(π / 2, 1.0), 1.0
+    σ = sigma_for_delta(0.02, τc, g.θ, g.tg)
+    ε0 = 1 - fidelity_map(tcl2_evolution(g, OUNoiseModel(σ, τc); nsteps=1000).S[end], ideal_gate(g))
+    for μ in (0.5σ, σ)
+        m = OUNoiseModel(μ, σ, τc)
+        r = simulate_gate(g, m, 4000; dt=2e-3, rng=StableRNG(41), save_every=500)
+        S2 = tcl2_evolution(g, m; nsteps=1000).S[end]
+        mc = average_error(r)
+        ε2 = 1 - fidelity_map(S2, ideal_gate(g))
+        @test abs(mc.ε - ε2) <= 5mc.se + 0.02ε2                    # 2%: the μ = 0 offset is ≈ 1.2%
+        @test ε2 > 1.2ε0                                            # fails if TCL2 ignores μ (then ε2 == ε0)
+        for ρ0 in cardinal_states()
+            fs = final_state(r, ρ0)
+            d = fs.ρ - apply_channel(S2, ρ0)
+            @test all(abs.(real.(d)) .<= 5 .* real.(fs.se) .+ 1e-4)
+            @test all(abs.(imag.(d)) .<= 5 .* imag.(fs.se) .+ 1e-4)  # the phase μ·t lives here
+        end
+    end
+end

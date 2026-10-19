@@ -53,7 +53,7 @@ or a vector of them.
 plot_error_vs_delta(args...; kwargs...) = _needs_plots("plot_error_vs_delta")
 
 """
-    plot_eigenvalues_vs_delta(rows, state::Symbol; compare = ("label" => rows2, …)) -> Plot
+    plot_eigenvalues_vs_delta(rows, state::Symbol; compare = ("label" => rows2, …), title) -> Plot
 
 The four panels of thesis Figs. 3.2–3.19 for one state (`:zp, :zm, :xp, :xm, :yp, :ym`):
 Re λ₁, Re λ₂ (brute force ± 2 SE), Im λ₁, Im λ₂, each versus δ, with optional

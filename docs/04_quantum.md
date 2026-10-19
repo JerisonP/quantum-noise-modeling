@@ -96,23 +96,29 @@ brute-force values for the thesis figures. At each δ it sets σ from Eq. 3.20 (
 cardinal state ⟨ρ_j(t_g)⟩ ± SE and λ₁,₂ ± SE. One unit-σ ensemble is scaled by σ
 for every δ. This is exact because OU is linear in σ, and it makes the curve smooth.
 
-**Units.** ξ is a rate, so σ²τ_c has units of 1/time. δ is a pure number only
-after a time unit is fixed. For t_g = τ_c the choice does not matter; for t_g = τ_c/10
-and τ_c/100 it does. Use the same time unit as the master-equation code.
+**Units.** ξ is a rate, so σ²τ_c, and therefore δ, has units of 1/time for every
+t_g/τ_c, including t_g = τ_c: changing the time unit by a factor a rescales δ by 1/a.
+δ is a pure number only after a time unit is fixed. This repo, the notebook and the
+thesis figures use τ_c = 1 as the time unit, so δ here means δ·τ_c. Use the same time
+unit as the master-equation code.
 
 ## 6. The 2nd-order master equation (the thing being validated)
 
 `tcl2_evolution(g, model)` solves
-d⟨ρ_I⟩/dt = −∫₀ᵗ C(t−s)[V(t),[V(s),⟨ρ_I⟩]] ds with V = ½n(t)·σ. At 2nd order, the SMNE
+d⟨ρ_I⟩/dt = −iμ[V(t),⟨ρ_I⟩] − ∫₀ᵗ C(t−s)[V(t),[V(s),⟨ρ_I⟩]] ds with V = ½n(t)·σ, where
+μ = ⟨ξ⟩ = `noise_mean(model)` (zero for the thesis's OU noise) and C is the autocovariance.
+At 2nd order, the SMNE
 and the PLME are identical (thesis §3.2.3), and this is that equation. It is **not** the
 reference. It is here to (a) reproduce the teammates' 2nd-order curves from the same
 objects, which confirms conventions before comparing, and (b) test the pipeline:
 
 - at θ = 0 it is exact for Gaussian noise, and it matches the closed form to 10⁻⁶;
-- at weak noise (δ = 0.02) it agrees with brute force within the SE.
+- at weak noise (δ = 0.02) it agrees with brute force: ε within 5 SE + 5%;
+- with a noise mean μ = σ/2 or μ = σ (same δ) it agrees with brute force: ε within
+  5 SE + 2%, and ⟨ρ_j(t_g)⟩ (real and imaginary parts) within 5 SE + 10⁻⁴.
 
-Preliminary NumPy result (to be confirmed with Julia at larger M): at t_g = τ_c,
-2nd order gives an ε about 3–5% above brute force for δ = 0.1–0.5. This agrees with the
+Julia result (notebook §9, 10 000 trajectories per δ): at t_g = τ_c, 2nd order gives an ε
++0.26% to +1.72% above brute force for δ = 0.1–0.5, growing steadily with δ. This agrees with the
 thesis's observation that 2nd order overestimates the effect of the noise.
 
 ## 7. Things found in the thesis while checking the equations
@@ -144,6 +150,7 @@ The corrected Eqs. 3.17–3.19 are checked by numerical integration in
 | `timestep_convergence` paired Δε grows with dt; Δε_se ≪ ε_se | the convergence tool works |
 | δ values, inverse, Eqs. 3.17–3.19 by quadrature | Eq. 3.20 and its derivation |
 | TCL2: θ = 0 exact; weak noise = brute force | the reference and the approximation agree where they must |
+| TCL2 with noise mean μ = σ/2, σ = brute force (ε within 5 SE + 2%, ⟨ρ_j⟩ within 5 SE + 10⁻⁴); ε rises > 20% above μ = 0 | the first-order mean term −iμ[V, ρ] is included |
 
 ## 9. Usage
 

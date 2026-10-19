@@ -1,0 +1,15 @@
+[deps]
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+QuantumNoiseSimulator = "6456640c-f5bc-48a2-8f4e-1463e2111e64"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[sources]
+QuantumNoiseSimulator = {path = ".."}
+
+[compat]
+Plots = "1.38"
+julia = "1.11"
